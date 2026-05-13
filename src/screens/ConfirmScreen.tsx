@@ -4,11 +4,20 @@ import { registrationsApi } from "../api";
 import { VirtualKeyboard } from "../components/VirtualKeyboard";
 import { InactivityOverlay } from "../components/InactivityOverlay";
 import { useInactivity } from "../hooks/useInactivity";
+import { logger } from "../services/logger";
 import { getTeamFlag } from "../data/teams";
 import { Flag } from "../components/Flag";
 
 type FieldId = "cedula" | "nombres" | "apellidos" | "telefono" | "email";
 type KbMode = "default" | "numeric" | "email" | "alphanumeric" | "no-at";
+
+const MAX_LENGTH: Record<FieldId, number> = {
+  cedula: 15,
+  nombres: 30,
+  apellidos: 30,
+  telefono: 10,
+  email: 50,
+};
 
 const EDITABLE_FIELDS: {
   id: FieldId;
@@ -22,6 +31,52 @@ const EDITABLE_FIELDS: {
   { id: "telefono", label: "Teléfono", mode: "numeric", required: true },
   { id: "email", label: "Correo electrónico", mode: "email", required: true },
 ];
+
+const validateField = (id: FieldId, value: string): string | null => {
+  const v = value.trim();
+  if (!v) return "Campo obligatorio";
+  switch (id) {
+    case "cedula":
+      if (!/^\d+$/.test(v)) return "Solo se permiten dígitos";
+      if (v.length < 10) return "Debe tener al menos 10 dígitos";
+      if (v.length > MAX_LENGTH.cedula) return "Máximo 15 dígitos";
+      return null;
+    case "nombres":
+      if (v.length < 3) return "Debe tener al menos 3 caracteres";
+      if (v.length > MAX_LENGTH.nombres) return "Máximo 30 caracteres";
+      return null;
+    case "apellidos":
+      if (v.length < 3) return "Debe tener al menos 3 caracteres";
+      if (v.length > MAX_LENGTH.apellidos) return "Máximo 30 caracteres";
+      return null;
+    case "telefono":
+      if (!/^\d+$/.test(v)) return "Solo se permiten dígitos";
+      if (v.length > MAX_LENGTH.telefono) return "Máximo 10 dígitos";
+      if (v.length !== 10) return "Debe tener exactamente 10 dígitos";
+      return null;
+    case "email":
+      if (v.length > MAX_LENGTH.email) return "Máximo 50 caracteres";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+        return "Correo electrónico inválido";
+      return null;
+    case "nombres":
+      if (v.length < 3) return "Debe tener al menos 3 caracteres";
+      return null;
+    case "apellidos":
+      if (v.length < 3) return "Debe tener al menos 3 caracteres";
+      return null;
+    case "telefono":
+      if (!/^\d+$/.test(v)) return "Solo se permiten dígitos";
+      if (v.length !== 10) return "Debe tener exactamente 10 dígitos";
+      return null;
+    case "email":
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+        return "Correo electrónico inválido";
+      return null;
+    default:
+      return null;
+  }
+};
 
 export function ConfirmScreen() {
   const {
@@ -38,6 +93,9 @@ export function ConfirmScreen() {
   } = useStore();
 
   const [activeField, setActiveField] = useState<FieldId | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<FieldId, string>>
+  >({});
   const { countdown, cancelReset } = useInactivity(60000, resetFlow);
 
   const currentField = EDITABLE_FIELDS.find((f) => f.id === activeField);
@@ -48,17 +106,31 @@ export function ConfirmScreen() {
     (val: string) => {
       if (!activeField) return;
       const upperFields: FieldId[] = ["nombres", "apellidos"];
-      const finalVal = upperFields.includes(activeField)
+      let finalVal = upperFields.includes(activeField)
         ? val.toUpperCase()
         : val;
+      finalVal = finalVal.slice(0, MAX_LENGTH[activeField]);
       setFormField(activeField, finalVal);
+      if (finalVal.trim()) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          [activeField]: validateField(activeField, finalVal),
+        }));
+      } else {
+        setFieldErrors((prev) => ({ ...prev, [activeField]: undefined }));
+      }
     },
     [activeField, setFormField],
   );
 
   const handleDone = () => {
     if (!activeField) return;
-    if (!formData[activeField].trim()) return;
+    const error = validateField(activeField, formData[activeField]);
+    if (error) {
+      setFieldErrors((prev) => ({ ...prev, [activeField]: error }));
+      return;
+    }
+    setFieldErrors((prev) => ({ ...prev, [activeField]: undefined }));
     const idx = EDITABLE_FIELDS.findIndex((f) => f.id === activeField);
     if (idx < EDITABLE_FIELDS.length - 1)
       setActiveField(EDITABLE_FIELDS[idx + 1].id);
@@ -69,10 +141,23 @@ export function ConfirmScreen() {
     let cls = "input-field";
     if (activeField === id) cls += " active";
     if (!formData[id].trim()) cls += " err";
+    if (fieldErrors[id]) cls += " err";
     return cls;
   };
 
   const handleConfirm = async () => {
+    const errors: Partial<Record<FieldId, string>> = {};
+    let hasError = false;
+    for (const f of EDITABLE_FIELDS) {
+      const err = validateField(f.id, formData[f.id]);
+      if (err) {
+        errors[f.id] = err;
+        hasError = true;
+      }
+    }
+    setFieldErrors(errors);
+    if (hasError) return;
+
     setSubmitting(true);
     try {
       await registrationsApi.register({
@@ -89,8 +174,10 @@ export function ConfirmScreen() {
           goals_visitor: p.goals_visitor,
         })),
       });
+      logger.info("register_success", "Registro enviado exitosamente", { factura: formData.factura });
       setScreen("success");
     } catch (err: any) {
+      logger.error("register_error", "Error al enviar registro", { factura: formData.factura, error: err?.response?.data?.message || err.message });
       alert(
         err?.response?.data?.message || "Error al guardar. Intenta de nuevo.",
       );
@@ -247,7 +334,7 @@ export function ConfirmScreen() {
                     placeholder={f.label}
                     onPointerDown={() => setActiveField(f.id)}
                   />
-                  {!formData[f.id].trim() && (
+                  {!formData[f.id].trim() && !fieldErrors[f.id] && (
                     <div
                       style={{
                         fontSize: 14,
@@ -257,6 +344,9 @@ export function ConfirmScreen() {
                     >
                       Campo requerido
                     </div>
+                  )}
+                  {fieldErrors[f.id] && (
+                    <div className="input-hint err">{fieldErrors[f.id]}</div>
                   )}
                 </div>
               ))}
@@ -335,8 +425,7 @@ export function ConfirmScreen() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns:
-                  predictions.length > 4 ? "1fr 1fr" : "1fr",
+                gridTemplateColumns: predictions.length > 4 ? "1fr 1fr" : "1fr",
                 gap: "8px 18px",
               }}
             >
@@ -351,9 +440,7 @@ export function ConfirmScreen() {
                       alignItems: "center",
                       gap: 10,
                       background:
-                        i % 2 === 0
-                          ? "rgba(255,255,255,.05)"
-                          : "transparent",
+                        i % 2 === 0 ? "rgba(255,255,255,.05)" : "transparent",
                       borderRadius: 8,
                       padding: "10px 14px",
                     }}

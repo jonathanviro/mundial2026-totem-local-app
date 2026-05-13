@@ -4,6 +4,7 @@ import { registrationsApi } from "../api";
 import { VirtualKeyboard } from "../components/VirtualKeyboard";
 import { InactivityOverlay } from "../components/InactivityOverlay";
 import { useInactivity } from "../hooks/useInactivity";
+import { logger } from "../services/logger";
 
 type FieldId =
   | "factura"
@@ -13,6 +14,15 @@ type FieldId =
   | "telefono"
   | "email";
 type KbMode = "default" | "numeric" | "email" | "alphanumeric" | "no-at";
+
+const MAX_LENGTH: Record<FieldId, number> = {
+  factura: 15,
+  cedula: 15,
+  nombres: 30,
+  apellidos: 30,
+  telefono: 10,
+  email: 50,
+};
 
 const FIELDS: {
   id: FieldId;
@@ -65,6 +75,61 @@ const FIELDS: {
   },
 ];
 
+const validateField = (id: FieldId, value: string): string | null => {
+  const v = value.trim();
+  if (!v) return "Campo obligatorio";
+  switch (id) {
+    case "factura":
+      if (v.length < 4) return "Debe tener al menos 4 caracteres";
+      if (v.length > MAX_LENGTH.factura) return "Máximo 15 caracteres";
+      return null;
+    case "cedula":
+      if (!/^\d+$/.test(v)) return "Solo se permiten dígitos";
+      if (v.length < 10) return "Debe tener al menos 10 dígitos";
+      if (v.length > MAX_LENGTH.cedula) return "Máximo 15 dígitos";
+      return null;
+    case "nombres":
+      if (v.length < 3) return "Debe tener al menos 3 caracteres";
+      if (v.length > MAX_LENGTH.nombres) return "Máximo 30 caracteres";
+      return null;
+    case "apellidos":
+      if (v.length < 3) return "Debe tener al menos 3 caracteres";
+      if (v.length > MAX_LENGTH.apellidos) return "Máximo 30 caracteres";
+      return null;
+    case "telefono":
+      if (!/^\d+$/.test(v)) return "Solo se permiten dígitos";
+      if (v.length > MAX_LENGTH.telefono) return "Máximo 10 dígitos";
+      if (v.length !== 10) return "Debe tener exactamente 10 dígitos";
+      return null;
+    case "email":
+      if (v.length > MAX_LENGTH.email) return "Máximo 50 caracteres";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+        return "Correo electrónico inválido";
+      return null;
+    case "cedula":
+      if (!/^\d+$/.test(v)) return "Solo se permiten dígitos";
+      if (v.length < 10) return "Debe tener al menos 10 dígitos";
+      if (v.length > 15) return "Debe tener máximo 15 dígitos";
+      return null;
+    case "nombres":
+      if (v.length < 3) return "Debe tener al menos 3 caracteres";
+      return null;
+    case "apellidos":
+      if (v.length < 3) return "Debe tener al menos 3 caracteres";
+      return null;
+    case "telefono":
+      if (!/^\d+$/.test(v)) return "Solo se permiten dígitos";
+      if (v.length !== 10) return "Debe tener exactamente 10 dígitos";
+      return null;
+    case "email":
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+        return "Correo electrónico inválido";
+      return null;
+    default:
+      return null;
+  }
+};
+
 export function RegisterScreen() {
   const {
     formData,
@@ -78,6 +143,9 @@ export function RegisterScreen() {
 
   const [activeField, setActiveField] = useState<FieldId | null>(null);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<FieldId, string>>
+  >({});
   const facturaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cedulaTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -86,14 +154,12 @@ export function RegisterScreen() {
   const currentField = FIELDS.find((f) => f.id === activeField);
 
   const isFormComplete = (): boolean => {
-    // Check all required fields are non-empty
     for (const f of FIELDS) {
       if (f.required && !formData[f.id].trim()) {
         return false;
       }
     }
-    // If factura has 3+ chars, it must be validated (ok)
-    if (formData.factura.trim().length >= 3 && facturaStatus !== "ok")
+    if (formData.factura.trim().length >= 4 && facturaStatus !== "ok")
       return false;
     return true;
   };
@@ -101,7 +167,7 @@ export function RegisterScreen() {
   // Validar factura en tiempo real
   useEffect(() => {
     const val = formData.factura.trim();
-    if (val.length < 3) {
+    if (val.length < 4) {
       setFacturaStatus("idle");
       return;
     }
@@ -111,8 +177,14 @@ export function RegisterScreen() {
       try {
         const res = await registrationsApi.checkFactura(val);
         setFacturaStatus(res.available ? "ok" : "taken");
+        if (res.available) {
+          logger.info("check_factura", "Factura disponible", { factura: val });
+        } else {
+          logger.warn("check_factura", "Factura ya utilizada", { factura: val });
+        }
       } catch {
         setFacturaStatus("idle");
+        logger.error("check_factura", "Error al verificar factura", { factura: val });
       }
     }, 700);
   }, [formData.factura]);
@@ -125,31 +197,72 @@ export function RegisterScreen() {
     cedulaTimer.current = setTimeout(async () => {
       try {
         const p = await registrationsApi.getParticipant(val);
-        if (p) prefillForm(p);
-      } catch {}
+        if (p) {
+          prefillForm(p);
+          logger.info("get_participant", "Participante encontrado por cédula", { cedula: val });
+        }
+      } catch {
+        logger.warn("get_participant", "Participante no encontrado por cédula", { cedula: val });
+      }
     }, 500);
   }, [formData.cedula]);
 
   const handleContinue = () => {
+    const errors: Partial<Record<FieldId, string>> = {};
+    let hasError = false;
+    for (const f of FIELDS) {
+      const err = validateField(f.id, formData[f.id]);
+      if (err) {
+        errors[f.id] = err;
+        hasError = true;
+      }
+    }
+    if (formData.factura.trim().length >= 4) {
+      if (facturaStatus === "checking") {
+        errors.factura = "Esperando verificación de factura...";
+        hasError = true;
+      } else if (facturaStatus !== "ok") {
+        errors.factura = "Factura no disponible";
+        hasError = true;
+      }
+    }
+    setFieldErrors(errors);
+    if (hasError) return;
     setError("");
     setActiveField(null);
+    logger.info("register_form_complete", "Formulario completado, avanzando a predicciones");
     setScreen("predict");
   };
 
   const handleKbChange = useCallback(
     (val: string) => {
       if (!activeField) return;
-      // Nombres y apellidos siempre en mayúsculas
       const upperFields: FieldId[] = ["nombres", "apellidos"];
-      const finalVal = upperFields.includes(activeField)
+      let finalVal = upperFields.includes(activeField)
         ? val.toUpperCase()
         : val;
+      finalVal = finalVal.slice(0, MAX_LENGTH[activeField]);
       setFormField(activeField, finalVal);
+      if (finalVal.trim()) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          [activeField]: validateField(activeField, finalVal),
+        }));
+      } else {
+        setFieldErrors((prev) => ({ ...prev, [activeField]: undefined }));
+      }
     },
     [activeField],
   );
 
   const handleDone = () => {
+    if (!activeField) return;
+    const error = validateField(activeField, formData[activeField]);
+    if (error) {
+      setFieldErrors((prev) => ({ ...prev, [activeField]: error }));
+      return;
+    }
+    setFieldErrors((prev) => ({ ...prev, [activeField]: undefined }));
     const idx = FIELDS.findIndex((f) => f.id === activeField);
     if (idx < FIELDS.length - 1) setActiveField(FIELDS[idx + 1].id);
     else setActiveField(null);
@@ -162,6 +275,7 @@ export function RegisterScreen() {
       if (facturaStatus === "ok") cls += " ok";
       if (facturaStatus === "taken") cls += " err";
     }
+    if (fieldErrors[id]) cls += " err";
     return cls;
   };
 
@@ -290,14 +404,24 @@ export function RegisterScreen() {
                       onPointerDown={() => setActiveField(f.id)}
                     />
                     {hint && (
-                      <div className={`input-hint ${hint.cls}`}>{hint.text}</div>
+                      <div className={`input-hint ${hint.cls}`}>
+                        {hint.text}
+                      </div>
+                    )}
+                    {fieldErrors[f.id] && (
+                      <div className="input-hint err">{fieldErrors[f.id]}</div>
                     )}
                   </div>
                 );
               })}
             </div>
 
-            <div style={{ borderTop: "1px solid rgba(255,255,255,.08)", margin: "48px 0 0" }} />
+            <div
+              style={{
+                borderTop: "1px solid rgba(255,255,255,.08)",
+                margin: "48px 0 0",
+              }}
+            />
 
             <button
               className="btn btn-accent btn-full"
@@ -323,8 +447,7 @@ export function RegisterScreen() {
             alt="Volver"
             style={{ height: 120, cursor: "pointer" }}
             onClick={() => {
-              setActiveField(null);
-              setScreen("splash");
+              resetFlow();
             }}
           />
         </div>

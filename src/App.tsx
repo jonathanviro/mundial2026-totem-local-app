@@ -5,6 +5,7 @@ import { RegisterScreen } from './screens/RegisterScreen'
 import { PredictScreen }  from './screens/PredictScreen'
 import { ConfirmScreen }  from './screens/ConfirmScreen'
 import { SuccessScreen }  from './screens/SuccessScreen'
+import { LogsScreen }     from './screens/LogsScreen'
 import './index.css'
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
       {screen === 'predict'  && <PredictScreen />}
       {screen === 'confirm'  && <ConfirmScreen />}
       {screen === 'success'  && <SuccessScreen />}
+      {screen === 'logs'     && <LogsScreen />}
     </div>
   )
 }

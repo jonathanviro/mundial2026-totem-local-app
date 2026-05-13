@@ -178,6 +178,7 @@ html, body {
 .kb-shift.on { background: rgba(0,230,118,.25); color: var(--accent2); }
 .kb-at     { background: rgba(0,230,118,.2); color: var(--accent2); }
 .kb-suffix { flex: 1.8; font-size: 20px; background: rgba(0,230,118,.15); color: var(--accent2); }
+.kb-numeric .kb-row:last-child .kb-key { flex: 1 !important; }
 
 /* ── Team grid cards ────────────────────── */
 .team-card { touch-action: manipulation; }
@@ -201,5 +202,9 @@ html, body {
   border-bottom: 1px solid rgba(255,255,255,.15);
   font-size: 36px; font-weight: 900; color: #fff;
 }
-.stepper-btn-sm { width: 48px; height: 48px; font-size: 22px; }
-.stepper-val-sm { width: 52px; height: 48px; font-size: 26px; }
+.stepper-btn-sm { width: 24px; height: 24px; font-size: 11px; }
+.stepper-val-sm { width: 26px; height: 24px; font-size: 13px; }
+.stepper-btn-md { width: 48px; height: 48px; font-size: 22px; }
+.stepper-val-md { width: 56px; height: 48px; font-size: 24px; }
+.stepper-btn-lg { width: 77px; height: 77px; font-size: 32px; }
+.stepper-val-lg { width: 86px; height: 77px; font-size: 40px; }

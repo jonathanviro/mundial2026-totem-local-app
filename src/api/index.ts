@@ -34,3 +34,10 @@ export const registrationsApi = {
     predictions: { match_id: number; goals_local: number; goals_visitor: number }[]
   }) => api.post('/registrations', payload).then(r => r.data),
 }
+
+export const logsApi = {
+  log: (data: { level: string; action: string; message: string; details?: any }) =>
+    api.post('/logs', data).then(r => r.data).catch(() => {}),
+  getDates: () => api.get('/logs').then(r => r.data),
+  getByDate: (date: string) => api.get(`/logs/${date}`).then(r => r.data),
+}

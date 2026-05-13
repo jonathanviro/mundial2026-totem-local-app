@@ -71,3 +71,4 @@ export type Screen =
   | 'predict'     // Selección de partidos y predicciones
   | 'confirm'     // Resumen antes de confirmar
   | 'success'     // Éxito - auto reset
+  | 'logs'        // Visor de logs del sistema

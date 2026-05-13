@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 
 type Mode = "default" | "numeric" | "email" | "alphanumeric" | "no-at";
 
@@ -37,13 +37,18 @@ const L = {
     ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
     ["a", "s", "d", "f", "g", "h", "j", "k", "l", "ñ"],
     ["SHIFT", "z", "x", "c", "v", "b", "n", "m", "⌫"],
-    ["@", ".com", "@gmail", "@outlook", "@yahoo", "SPACE", "OK"],
+    ["123", "@", ".com", "@gmail", "@outlook", "@yahoo", "SPACE", "OK"],
   ],
   "email-shift": [
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L", "Ñ"],
     ["SHIFT", "Z", "X", "C", "V", "B", "N", "M", "⌫"],
-    ["@", ".COM", "@GMAIL", "@OUTLOOK", "@YAHOO", "SPACE", "OK"],
+    ["123", "@", ".COM", "@GMAIL", "@OUTLOOK", "@YAHOO", "SPACE", "OK"],
+  ],
+  "email-sym": [
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+    ["@", "_", "-", ".", "+"],
+    ["ABC", "SPACE", "⌫", "OK"],
   ],
 };
 
@@ -61,14 +66,20 @@ export function VirtualKeyboard({
   onDone,
 }: Props) {
   const [shifted, setShifted] = useState(false);
+  const [showSymbols, setShowSymbols] = useState(false);
+
+  useEffect(() => {
+    setShowSymbols(false);
+  }, [mode]);
 
   const layout = useMemo(() => {
     if (mode === "numeric") return L.numeric;
     if (mode === "alphanumeric") return L.alphanumeric;
+    if (mode === "email" && showSymbols) return L["email-sym"];
     if (mode === "email") return shifted ? L["email-shift"] : L.email;
-    if (mode === "no-at") return L["no-at"]; // Always uppercase, ignore shift
+    if (mode === "no-at") return L["no-at"];
     return shifted ? L.shift : L.default;
-  }, [mode, shifted]);
+  }, [mode, shifted, showSymbols]);
 
   const handleKey = (key: string) => {
     if (key === "⌫") {
@@ -87,7 +98,12 @@ export function VirtualKeyboard({
       setShifted((s) => !s);
       return;
     }
-    if (key === "123" || key === "ABC") {
+    if (key === "123") {
+      setShowSymbols(true);
+      return;
+    }
+    if (key === "ABC") {
+      setShowSymbols(false);
       return;
     }
     // Handle @ and domains for email
@@ -129,6 +145,7 @@ export function VirtualKeyboard({
     if (key === "⌫") return `${b} kb-back`;
     if (key === "SHIFT" || key === "shift")
       return `${b} kb-shift${shifted ? " on" : ""}`;
+    if (key === "123" || key === "ABC") return `${b} kb-shift`;
     if (key === "@") return `${b} kb-at`;
     if (
       [
@@ -156,7 +173,7 @@ export function VirtualKeyboard({
           : key;
 
   return (
-    <div className="keyboard-wrap">
+    <div className={`keyboard-wrap${mode === "numeric" ? " kb-numeric" : ""}`}>
       <div className="kb-rows">
         {layout.map((row, ri) => (
           <div key={ri} className="kb-row">

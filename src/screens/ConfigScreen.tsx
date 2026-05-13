@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useStore } from "../store";
 import { configApi, syncApi } from "../api";
 import { VirtualKeyboard } from "../components/VirtualKeyboard";
+import { logger } from "../services/logger";
 
 export function ConfigScreen() {
   const { setScreen, setConfigured } = useStore();
@@ -33,8 +34,10 @@ export function ConfigScreen() {
       await configApi.update({ totem_code: code.trim() });
       setConfigured(true, code.trim());
       setStatus({ text: "Código guardado correctamente", ok: true });
+      logger.info("save_config", "Código de tótem guardado", { code: code.trim() });
     } catch {
       setStatus({ text: "Error al guardar el código", ok: false });
+      logger.error("save_config", "Error al guardar código de tótem");
     } finally {
       setSaving(false);
     }
@@ -54,6 +57,13 @@ export function ConfigScreen() {
               ? "Configura el código primero"
               : res.message || res.status,
       );
+      if (res.status === "ok") {
+        logger.info("manual_sync", "Sincronización exitosa", { message: res.message });
+      } else if (res.status === "no_internet") {
+        logger.warn("manual_sync", "Sin conexión al servidor");
+      } else {
+        logger.warn("manual_sync", res.message || res.status);
+      }
       syncApi
         .status()
         .then(setInfo)
@@ -264,6 +274,42 @@ export function ConfigScreen() {
               </div>
             )}
           </div>
+
+          {/* Card: Logs */}
+          {!activeInput && (
+            <div
+              style={{
+                width: "100%",
+                background: "rgba(255,255,255,.1)",
+                backdropFilter: "blur(14px)",
+                WebkitBackdropFilter: "blur(14px)",
+                border: "1px solid rgba(255,255,255,.15)",
+                borderRadius: 20,
+                padding: "32px 36px",
+                marginBottom: 24,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 20,
+                  color: "rgba(255,255,255,.5)",
+                  textTransform: "uppercase",
+                  letterSpacing: ".1em",
+                  fontWeight: 700,
+                  marginBottom: 20,
+                }}
+              >
+                Registro de actividad
+              </div>
+              <button
+                className="btn btn-secondary btn-full"
+                style={{ fontSize: 24, minHeight: 80 }}
+                onClick={() => setScreen("logs")}
+              >
+                📋 Ver Logs
+              </button>
+            </div>
+          )}
 
           {/* Card: Estado actual */}
           {!activeInput && info && (

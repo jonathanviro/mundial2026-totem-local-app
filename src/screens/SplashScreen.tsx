@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useStore } from "../store";
 import { phaseApi, configApi } from "../api";
+import { logger } from "../services/logger";
 
 export function SplashScreen() {
   const { setScreen, setPhaseData, setConfigured, isConfigured } = useStore();
@@ -11,16 +12,21 @@ export function SplashScreen() {
     configApi
       .get()
       .then((cfg) => {
-        if (cfg.totem_code) setConfigured(true, cfg.totem_code);
+        if (cfg.totem_code) {
+          setConfigured(true, cfg.totem_code);
+          logger.info("load_config", "Configuración cargada", { code: cfg.totem_code });
+        }
       })
-      .catch(() => {});
+      .catch(() => logger.error("load_config", "Error al cargar configuración"));
     phaseApi
       .getActive()
       .then((data) => {
-        if (data.phase)
+        if (data.phase) {
           setPhaseData(data.phase, data.matches || [], data.campaign || null);
+          logger.info("load_phase", `Fase activa: ${data.phase.name}`, { phase_id: data.phase.id });
+        }
       })
-      .catch(() => {});
+      .catch(() => logger.error("load_phase", "Error al cargar fase activa"));
   }, []);
 
   const handleTap = () => {

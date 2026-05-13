@@ -4,6 +4,7 @@ import { InactivityOverlay } from "../components/InactivityOverlay";
 import { useInactivity } from "../hooks/useInactivity";
 import { getTeamFlag } from "../data/teams";
 import { Flag } from "../components/Flag";
+import { logger } from "../services/logger";
 import type { Match, Team } from "../types";
 
 // Construye equipos únicos desde los partidos
@@ -36,16 +37,22 @@ function Stepper({
   value,
   onChange,
   compact,
+  medium,
+  large,
 }: {
   value: number;
   onChange: (v: number) => void;
   compact?: boolean;
+  medium?: boolean;
+  large?: boolean;
 }) {
+  const l = large;
+  const m = medium;
   const s = compact;
   return (
     <div className="stepper">
       <button
-        className={s ? "stepper-btn stepper-btn-sm" : "stepper-btn"}
+        className={l ? "stepper-btn stepper-btn-lg" : m ? "stepper-btn stepper-btn-md" : s ? "stepper-btn stepper-btn-sm" : "stepper-btn"}
         onPointerDown={(e) => {
           e.stopPropagation();
           onChange(Math.max(0, value - 1));
@@ -53,9 +60,9 @@ function Stepper({
       >
         −
       </button>
-      <div className={s ? "stepper-val stepper-val-sm" : "stepper-val"}>{value}</div>
+      <div className={l ? "stepper-val stepper-val-lg" : m ? "stepper-val stepper-val-md" : s ? "stepper-val stepper-val-sm" : "stepper-val"}>{value}</div>
       <button
-        className={s ? "stepper-btn stepper-btn-sm" : "stepper-btn"}
+        className={l ? "stepper-btn stepper-btn-lg" : m ? "stepper-btn stepper-btn-md" : s ? "stepper-btn stepper-btn-sm" : "stepper-btn"}
         onPointerDown={(e) => {
           e.stopPropagation();
           onChange(value + 1);
@@ -76,6 +83,8 @@ function MatchCard({
   onUpdate,
   canAdd,
   compact,
+  medium,
+  large,
 }: {
   match: Match;
   prediction: any;
@@ -84,8 +93,12 @@ function MatchCard({
   onUpdate: (field: "goals_local" | "goals_visitor", v: number) => void;
   canAdd: boolean;
   compact?: boolean;
+  medium?: boolean;
+  large?: boolean;
 }) {
   const selected = !!prediction;
+  const l = large;
+  const m = medium;
   const s = compact;
   return (
     <div
@@ -94,23 +107,23 @@ function MatchCard({
         backdropFilter: "blur(18px)",
         WebkitBackdropFilter: "blur(18px)",
         border: `1px solid ${selected ? "rgba(0,230,118,.45)" : "rgba(255,255,255,.18)"}`,
-        borderRadius: s ? 16 : 20,
-        padding: s ? "20px 24px" : "36px 48px",
+        borderRadius: l ? 22 : m ? 14 : s ? 8 : 20,
+        padding: l ? "38px 52px" : m ? "24px 32px" : s ? "10px 12px" : "36px 48px",
         boxShadow: selected
           ? "0 8px 40px rgba(0,230,118,.12), inset 0 1px 0 rgba(255,255,255,.06)"
           : "0 8px 40px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.06)",
         transition: "all .25s",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: s ? 14 : 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: l ? 25 : m ? 16 : s ? 7 : 24 }}>
         {/* Local */}
         <div style={{ flex: 1, textAlign: "center" }}>
-          <Flag team={match.team_local} size={s ? 44 : 72} />
+          <Flag team={match.team_local} size={l ? 77 : m ? 48 : s ? 22 : 72} />
           <div
             style={{
-              fontSize: s ? 16 : 20,
+              fontSize: l ? 22 : m ? 14 : s ? 8 : 20,
               fontWeight: 700,
-              marginTop: s ? 6 : 10,
+              marginTop: l ? 11 : m ? 6 : s ? 3 : 10,
               lineHeight: 1.2,
               textShadow: "0 1px 6px rgba(0,0,0,.5)",
             }}
@@ -125,21 +138,23 @@ function MatchCard({
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: s ? 10 : 14,
+            gap: l ? 14 : m ? 10 : s ? 5 : 14,
             flex: 1.2,
           }}
         >
           {selected ? (
             <>
-              <div style={{ display: "flex", alignItems: "center", gap: s ? 10 : 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: l ? 18 : m ? 10 : s ? 5 : 16 }}>
                 <Stepper
                   compact={s}
+                  medium={m}
+                  large={l}
                   value={prediction.goals_local}
                   onChange={(v) => onUpdate("goals_local", v)}
                 />
                 <span
                   style={{
-                    fontSize: s ? 24 : 32,
+                    fontSize: l ? 34 : m ? 22 : s ? 12 : 32,
                     color: "rgba(255,255,255,.4)",
                     fontWeight: 700,
                   }}
@@ -148,6 +163,8 @@ function MatchCard({
                 </span>
                 <Stepper
                   compact={s}
+                  medium={m}
+                  large={l}
                   value={prediction.goals_visitor}
                   onChange={(v) => onUpdate("goals_visitor", v)}
                 />
@@ -155,11 +172,11 @@ function MatchCard({
               <button
                 className="btn btn-ghost"
                 style={{
-                  fontSize: s ? 16 : 20,
+                  fontSize: l ? 22 : m ? 14 : s ? 8 : 20,
                   color: "#ff8080",
-                  minHeight: s ? 44 : 64,
-                  padding: s ? "0 20px" : "0 32px",
-                  borderRadius: s ? 22 : 32,
+                  minHeight: l ? 68 : m ? 44 : s ? 22 : 64,
+                  padding: l ? "0 34px" : m ? "0 22px" : s ? "0 10px" : "0 32px",
+                  borderRadius: l ? 34 : m ? 22 : s ? 11 : 32,
                 }}
                 onPointerDown={(e) => {
                   e.stopPropagation();
@@ -173,11 +190,11 @@ function MatchCard({
             <button
               className="btn btn-accent"
               style={{
-                fontSize: s ? 18 : 22,
+                fontSize: l ? 23 : m ? 16 : s ? 9 : 22,
                 fontWeight: 700,
-                minHeight: s ? 48 : 64,
-                padding: s ? "0 28px" : "0 40px",
-                borderRadius: s ? 24 : 32,
+                minHeight: l ? 68 : m ? 44 : s ? 24 : 64,
+                padding: l ? "0 43px" : m ? "0 28px" : s ? "0 14px" : "0 40px",
+                borderRadius: l ? 34 : m ? 22 : s ? 12 : 32,
                 opacity: canAdd ? 1 : 0.35,
               }}
               disabled={!canAdd}
@@ -193,12 +210,12 @@ function MatchCard({
 
         {/* Visitante */}
         <div style={{ flex: 1, textAlign: "center" }}>
-          <Flag team={match.team_visitor} size={s ? 44 : 72} />
+          <Flag team={match.team_visitor} size={l ? 77 : m ? 48 : s ? 22 : 72} />
           <div
             style={{
-              fontSize: s ? 16 : 20,
+              fontSize: l ? 22 : m ? 14 : s ? 8 : 20,
               fontWeight: 700,
-              marginTop: s ? 6 : 10,
+              marginTop: l ? 11 : m ? 6 : s ? 3 : 10,
               lineHeight: 1.2,
               textShadow: "0 1px 6px rgba(0,0,0,.5)",
             }}
@@ -232,7 +249,10 @@ export function PredictScreen() {
   const required = phase?.predictions_required || 3;
   const done = predictions.length;
   const teams = useMemo(() => buildTeams(matches), [matches]);
-  const isCompactPhase = phase?.number === 2;
+  const phaseNum = Number(phase?.number);
+  const isPhase2 = phaseNum === 2;
+  const isMediumPhase = phaseNum >= 2 && phaseNum <= 3;
+  const isLargePhase = phaseNum >= 4;
 
   // Para fases > 1 no se usa grilla de banderas, se muestran todos los partidos
   const showTeamGrid = !selectedTeam && phase?.number === 1;
@@ -246,6 +266,7 @@ export function PredictScreen() {
 
   const handleAdd = (match: Match) => {
     if (done >= required) return;
+    logger.info("add_prediction", `Predicción agregada: ${match.team_local} vs ${match.team_visitor}`, { match_id: match.id });
     addPrediction({
       match_id: match.id,
       goals_local: 0,
@@ -526,7 +547,7 @@ export function PredictScreen() {
                 flexDirection: "column",
                 gap: 40,
                 width: "100%",
-                maxWidth: isCompactPhase ? 1200 : 900,
+                maxWidth: isPhase2 ? 1200 : isLargePhase ? 1200 : 900,
               }}
             >
               {filteredMatches.length === 0 && (
@@ -544,8 +565,8 @@ export function PredictScreen() {
                   <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: isCompactPhase ? "1fr 1fr" : "1fr",
-                    gap: isCompactPhase ? 24 : 28,
+                    gridTemplateColumns: isPhase2 ? "1fr 1fr" : "1fr",
+                    gap: isPhase2 ? 12 : isLargePhase ? 31 : isMediumPhase ? 16 : 28,
                 }}
               >
                 {filteredMatches.map((m) => {
@@ -559,7 +580,8 @@ export function PredictScreen() {
                       onAdd={() => handleAdd(m)}
                       onRemove={() => removePrediction(m.id)}
                       onUpdate={(field, v) => updatePrediction(m.id, field, v)}
-                      compact={isCompactPhase}
+                      medium={isMediumPhase}
+                      large={isLargePhase}
                     />
                   );
                 })}
