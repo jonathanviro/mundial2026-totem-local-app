@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useStore } from "../store";
 import { registrationsApi } from "../api";
 import { VirtualKeyboard } from "../components/VirtualKeyboard";
@@ -27,51 +27,26 @@ const EDITABLE_FIELDS: {
 }[] = [
   { id: "cedula", label: "Cédula / RUC", mode: "numeric", required: true },
   { id: "nombres", label: "Nombres", mode: "no-at", required: true },
-  { id: "apellidos", label: "Apellidos", mode: "no-at", required: true },
-  { id: "telefono", label: "Teléfono", mode: "numeric", required: true },
-  { id: "email", label: "Correo electrónico", mode: "email", required: true },
+  { id: "apellidos", label: "Apellidos", mode: "no-at", required: false },
+  { id: "telefono", label: "Teléfono", mode: "numeric", required: false },
+  { id: "email", label: "Correo electrónico", mode: "email", required: false },
 ];
 
+const HIDDEN_FIELDS: FieldId[] = ["apellidos", "telefono", "email"];
+
 const validateField = (id: FieldId, value: string): string | null => {
+  if (HIDDEN_FIELDS.includes(id)) return null;
   const v = value.trim();
   if (!v) return "Campo obligatorio";
   switch (id) {
     case "cedula":
       if (!/^\d+$/.test(v)) return "Solo se permiten dígitos";
       if (v.length < 10) return "Debe tener al menos 10 dígitos";
-      if (v.length > MAX_LENGTH.cedula) return "Máximo 15 dígitos";
+      if (v.length > 13) return "Máximo 13 dígitos";
       return null;
     case "nombres":
       if (v.length < 3) return "Debe tener al menos 3 caracteres";
       if (v.length > MAX_LENGTH.nombres) return "Máximo 30 caracteres";
-      return null;
-    case "apellidos":
-      if (v.length < 3) return "Debe tener al menos 3 caracteres";
-      if (v.length > MAX_LENGTH.apellidos) return "Máximo 30 caracteres";
-      return null;
-    case "telefono":
-      if (!/^\d+$/.test(v)) return "Solo se permiten dígitos";
-      if (v.length > MAX_LENGTH.telefono) return "Máximo 10 dígitos";
-      if (v.length !== 10) return "Debe tener exactamente 10 dígitos";
-      return null;
-    case "email":
-      if (v.length > MAX_LENGTH.email) return "Máximo 50 caracteres";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
-        return "Correo electrónico inválido";
-      return null;
-    case "nombres":
-      if (v.length < 3) return "Debe tener al menos 3 caracteres";
-      return null;
-    case "apellidos":
-      if (v.length < 3) return "Debe tener al menos 3 caracteres";
-      return null;
-    case "telefono":
-      if (!/^\d+$/.test(v)) return "Solo se permiten dígitos";
-      if (v.length !== 10) return "Debe tener exactamente 10 dígitos";
-      return null;
-    case "email":
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
-        return "Correo electrónico inválido";
       return null;
     default:
       return null;
@@ -96,19 +71,31 @@ export function ConfirmScreen() {
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<FieldId, string>>
   >({});
+  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
+  const cedulaRef = useRef<HTMLDivElement>(null);
+  const nombresRef = useRef<HTMLDivElement>(null);
   const { countdown, cancelReset } = useInactivity(60000, resetFlow);
 
   const currentField = EDITABLE_FIELDS.find((f) => f.id === activeField);
+
+  useEffect(() => {
+    if (activeField === "cedula" && cedulaRef.current) {
+      const rect = cedulaRef.current.getBoundingClientRect();
+      setKeyboardTop(rect.bottom + 8);
+    } else if (activeField === "nombres" && nombresRef.current) {
+      const rect = nombresRef.current.getBoundingClientRect();
+      setKeyboardTop(rect.bottom + 8);
+    } else {
+      setKeyboardTop(null);
+    }
+  }, [activeField]);
 
   const getMatch = (id: number) => matches.find((m) => m.id === id);
 
   const handleKbChange = useCallback(
     (val: string) => {
       if (!activeField) return;
-      const upperFields: FieldId[] = ["nombres", "apellidos"];
-      let finalVal = upperFields.includes(activeField)
-        ? val.toUpperCase()
-        : val;
+      let finalVal = activeField === "nombres" ? val.toUpperCase() : val;
       finalVal = finalVal.slice(0, MAX_LENGTH[activeField]);
       setFormField(activeField, finalVal);
       if (finalVal.trim()) {
@@ -131,10 +118,21 @@ export function ConfirmScreen() {
       return;
     }
     setFieldErrors((prev) => ({ ...prev, [activeField]: undefined }));
-    const idx = EDITABLE_FIELDS.findIndex((f) => f.id === activeField);
-    if (idx < EDITABLE_FIELDS.length - 1)
-      setActiveField(EDITABLE_FIELDS[idx + 1].id);
+    const allIds = EDITABLE_FIELDS.map((f) => f.id);
+    let next = allIds.indexOf(activeField) + 1;
+    while (next < allIds.length && HIDDEN_FIELDS.includes(allIds[next]))
+      next++;
+    if (next < allIds.length) setActiveField(allIds[next]);
     else setActiveField(null);
+  };
+
+  const goToNextField = () => {
+    if (!activeField) return;
+    if (activeField === "cedula") {
+      setActiveField("nombres");
+    } else {
+      setActiveField(null);
+    }
   };
 
   const getInputClass = (id: FieldId) => {
@@ -312,44 +310,47 @@ export function ConfirmScreen() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                gridTemplateColumns: "1fr",
                 gap: "16px 32px",
               }}
             >
-              {EDITABLE_FIELDS.map((f) => (
-                <div key={f.id} className="input-wrap">
-                  <label className="input-label">
-                    {f.label}
-                    {f.required && <span>*</span>}
-                  </label>
-                  <input
-                    readOnly
-                    className={getInputClass(f.id)}
-                    style={{
-                      fontSize: 22,
-                      minHeight: 60,
-                      cursor: "pointer",
-                    }}
-                    value={formData[f.id]}
-                    placeholder={f.label}
-                    onPointerDown={() => setActiveField(f.id)}
-                  />
-                  {!formData[f.id].trim() && !fieldErrors[f.id] && (
-                    <div
+              {EDITABLE_FIELDS.map((f) => {
+                const hidden = HIDDEN_FIELDS.includes(f.id);
+                return (
+                  <div key={f.id} className="input-wrap" ref={f.id === "cedula" ? cedulaRef : f.id === "nombres" ? nombresRef : undefined} style={hidden ? { display: "none" } : undefined}>
+                    <label className="input-label">
+                      {f.label}
+                      {f.required && <span>*</span>}
+                    </label>
+                    <input
+                      readOnly
+                      className={getInputClass(f.id)}
                       style={{
-                        fontSize: 14,
-                        color: "#ff8080",
-                        marginTop: 4,
+                        fontSize: 22,
+                        minHeight: 60,
+                        cursor: "pointer",
                       }}
-                    >
-                      Campo requerido
-                    </div>
-                  )}
-                  {fieldErrors[f.id] && (
-                    <div className="input-hint err">{fieldErrors[f.id]}</div>
-                  )}
-                </div>
-              ))}
+                      value={formData[f.id]}
+                      placeholder={f.label}
+                      onPointerDown={() => setActiveField(f.id)}
+                    />
+                    {!formData[f.id].trim() && !fieldErrors[f.id] && (
+                      <div
+                        style={{
+                          fontSize: 14,
+                          color: "#ff8080",
+                          marginTop: 4,
+                        }}
+                      >
+                        Campo requerido
+                      </div>
+                    )}
+                    {fieldErrors[f.id] && (
+                      <div className="input-hint err">{fieldErrors[f.id]}</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -509,66 +510,36 @@ export function ConfirmScreen() {
         </div>
       </div>
 
-      {/* Keyboard */}
+      {/* Floating keyboard */}
       <div
+        className="keyboard-floating"
         style={{
-          position: "relative",
-          zIndex: 20,
-          flexShrink: 0,
-          background: activeField ? "rgba(255,255,255,.18)" : "transparent",
-          backdropFilter: activeField ? "blur(18px)" : "none",
-          WebkitBackdropFilter: activeField ? "blur(18px)" : "none",
-          borderTop: activeField ? "1px solid rgba(255,255,255,.12)" : "none",
-          visibility: activeField ? "visible" : "hidden",
+          top: keyboardTop !== null ? keyboardTop : -9999,
+          opacity: activeField ? 1 : 0,
           pointerEvents: activeField ? "auto" : "none",
         }}
       >
-        <div className="keyboard-bar">
-          <span
-            style={{
-              fontSize: 20,
-              color: "#ffffff",
-              textTransform: "uppercase",
-              letterSpacing: ".1em",
-              fontWeight: 700,
-            }}
-          >
+        <div className="kb-bar-c">
+          <span className="bar-label">
             {currentField?.label || "Selecciona un campo"}
           </span>
-          <div style={{ display: "flex", gap: 16 }}>
+          <div style={{ display: "flex", gap: 8 }}>
             <button
-              className="btn btn-ghost"
-              style={{
-                fontSize: 18,
-                minHeight: 56,
-                padding: "0 24px",
-                borderRadius: 12,
-              }}
+              className="bar-btn bar-btn-ghost"
               onClick={() => setActiveField(null)}
             >
               Cerrar
             </button>
             <button
-              className="btn btn-primary"
-              style={{
-                fontSize: 18,
-                minHeight: 56,
-                padding: "0 28px",
-                borderRadius: 12,
-                opacity: activeField && !formData[activeField].trim() ? 0.4 : 1,
-                cursor:
-                  activeField && !formData[activeField].trim()
-                    ? "not-allowed"
-                    : "pointer",
-              }}
-              disabled={!activeField || !formData[activeField].trim()}
-              onClick={handleDone}
+              className="bar-btn bar-btn-primary"
+              onClick={goToNextField}
             >
-              Siguiente →
+              Siguiente
             </button>
           </div>
         </div>
         <VirtualKeyboard
+          compact
           value={activeField ? formData[activeField] || "" : ""}
           onChange={handleKbChange}
           mode={currentField?.mode || "default"}

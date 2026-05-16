@@ -57,6 +57,7 @@ interface Props {
   onChange: (v: string) => void;
   mode?: Mode;
   onDone?: () => void;
+  compact?: boolean;
 }
 
 export function VirtualKeyboard({
@@ -64,6 +65,7 @@ export function VirtualKeyboard({
   onChange,
   mode = "default",
   onDone,
+  compact,
 }: Props) {
   const [shifted, setShifted] = useState(false);
   const [showSymbols, setShowSymbols] = useState(false);
@@ -139,7 +141,7 @@ export function VirtualKeyboard({
   };
 
   const cls = (key: string) => {
-    const b = "kb-key";
+    const b = compact ? "kb-key-c" : "kb-key";
     if (key === "SPACE") return `${b} kb-space`;
     if (key === "OK") return `${b} kb-ok`;
     if (key === "⌫") return `${b} kb-back`;
@@ -173,10 +175,10 @@ export function VirtualKeyboard({
           : key;
 
   return (
-    <div className={`keyboard-wrap${mode === "numeric" ? " kb-numeric" : ""}`}>
-      <div className="kb-rows">
+    <div className={`keyboard-wrap${mode === "numeric" ? " kb-numeric" : ""}${compact ? " kb-wrap-c" : ""}`}>
+      <div className={`kb-rows${compact ? " kb-rows-c" : ""}`}>
         {layout.map((row, ri) => (
-          <div key={ri} className="kb-row">
+          <div key={ri} className={`kb-row${compact ? " kb-row-c" : ""}`}>
             {row.map((key, ki) => (
               <button
                 key={`${ri}-${ki}`}
