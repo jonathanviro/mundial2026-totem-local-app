@@ -142,7 +142,7 @@ html, body {
 /* ── Keyboard ───────────────────────────── */
 .keyboard-wrap {
   flex-shrink: 0;
-  background: rgba(255,255,255,.18);
+  background: rgba(255,255,255,.55);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-top: 1px solid rgba(255,255,255,.2);
@@ -151,7 +151,7 @@ html, body {
 .keyboard-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 24px 16px;
-  background: rgba(255,255,255,.2);
+  background: rgba(255,255,255,.4);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-top: 1px solid rgba(255,255,255,.2);
@@ -197,29 +197,29 @@ html, body {
 .kb-row-c  { gap: 4px; }
 .kb-key-c {
   flex: 1; min-width: 48px; height: 48px;
-  background: rgba(255,255,255,0.18);
+  background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.28);
+  border: 1px solid rgba(255,255,255,0.15);
   border-radius: 8px; color: #fff; font-size: 16px; font-weight: 700;
   font-family: inherit; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background .1s, transform .08s;
   touch-action: manipulation;
 }
-.kb-key-c:active { transform: scale(.9); background: rgba(255,255,255,.3); }
-.kb-key-c.kb-space  { flex: 4; font-size: 12px; color: rgba(255,255,255,.45); }
+.kb-key-c:active { transform: scale(.9); background: rgba(0, 0, 0, 0.55); }
+.kb-key-c.kb-space  { flex: 4; font-size: 12px; color: rgba(255,255,255,.6); }
 .kb-key-c.kb-ok     { flex: 2; background: linear-gradient(135deg,var(--green),var(--green-light)); color: #fff; font-size: 14px; }
-.kb-key-c.kb-back   { flex: 1.5; background: rgba(220,38,38,0.35); color: #ff8888; border-color: rgba(220,38,38,.4); }
+.kb-key-c.kb-back   { flex: 1.5; background: rgba(220,38,38,0.6); color: #fff; border-color: rgba(220,38,38,.5); }
 .kb-key-c.kb-shift  { flex: 1.5; font-size: 14px; }
-.kb-key-c.kb-shift.on { background: rgba(0,230,118,.25); color: var(--accent2); }
-.kb-key-c.kb-at     { background: rgba(0,230,118,.2); color: var(--accent2); }
-.kb-key-c.kb-suffix { flex: 1.8; font-size: 13px; background: rgba(0,230,118,.15); color: var(--accent2); }
+.kb-key-c.kb-shift.on { background: rgba(0,230,118,.35); color: var(--accent2); }
+.kb-key-c.kb-at     { background: rgba(0,230,118,.3); color: var(--accent2); }
+.kb-key-c.kb-suffix { flex: 1.8; font-size: 13px; background: rgba(0,230,118,.25); color: var(--accent2); }
 .kb-numeric .kb-row-c:last-child .kb-key-c { flex: 1 !important; }
 .kb-bar-c {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 14px 8px;
-  background: rgba(255,255,255,.2);
+  background: rgba(255,255,255,.6);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-top: 1px solid rgba(255,255,255,.2);
@@ -227,7 +227,7 @@ html, body {
 .bar-label { font-size: 13px; color: #fff; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
 .bar-btn  { font-size: 12px; min-height: 32px; padding: 0 12px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform .1s; }
 .bar-btn:active { transform: scale(.95); }
-.bar-btn-ghost  { background: rgba(255,255,255,.1); color: #fff; }
+.bar-btn-ghost  { background: rgba(255,255,255,.15); color: #1a2634; }
 .bar-btn-primary { background: linear-gradient(135deg,var(--green),var(--green-light)); color: #fff; }
 
 /* ── Team grid cards ────────────────────── */
