@@ -248,7 +248,14 @@ export function PredictScreen() {
 
   const required = phase?.predictions_required || 3;
   const done = predictions.length;
-  const teams = useMemo(() => buildTeams(matches), [matches]);
+
+  // Filtrar partidos: ocultar los del día de hoy y pasados
+  const todayStr = new Date().toISOString().split("T")[0];
+  const availableMatches = useMemo(() => {
+    return matches.filter(m => !m.date || m.date > todayStr);
+  }, [matches, todayStr]);
+
+  const teams = useMemo(() => buildTeams(availableMatches), [availableMatches]);
   const phaseNum = Number(phase?.number);
   const isPhase2 = phaseNum === 2;
   const isMediumPhase = phaseNum >= 2 && phaseNum <= 3;
@@ -258,11 +265,11 @@ export function PredictScreen() {
   const showTeamGrid = !selectedTeam && phase?.number === 1;
 
   const filteredMatches = useMemo(() => {
-    if (!selectedTeam) return matches;
-    return matches.filter(
+    if (!selectedTeam) return availableMatches;
+    return availableMatches.filter(
       (m) => m.team_local === selectedTeam || m.team_visitor === selectedTeam,
     );
-  }, [matches, selectedTeam]);
+  }, [availableMatches, selectedTeam]);
 
   const handleAdd = (match: Match) => {
     if (done >= required) return;

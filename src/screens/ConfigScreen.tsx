@@ -4,6 +4,8 @@ import { configApi, syncApi } from "../api";
 import { VirtualKeyboard } from "../components/VirtualKeyboard";
 import { logger } from "../services/logger";
 
+const ADMIN_PASSWORD = "T123PASSWORD";
+
 export function ConfigScreen() {
   const { setScreen, setConfigured } = useStore();
   const [code, setCode] = useState("");
@@ -15,6 +17,9 @@ export function ConfigScreen() {
   );
   const [syncResult, setSyncResult] = useState("");
   const [info, setInfo] = useState<any>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordValue, setPasswordValue] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
 
   useEffect(() => {
     configApi.get().then((d) => {
@@ -34,7 +39,9 @@ export function ConfigScreen() {
       await configApi.update({ totem_code: code.trim() });
       setConfigured(true, code.trim());
       setStatus({ text: "Código guardado correctamente", ok: true });
-      logger.info("save_config", "Código de tótem guardado", { code: code.trim() });
+      logger.info("save_config", "Código de tótem guardado", {
+        code: code.trim(),
+      });
     } catch {
       setStatus({ text: "Error al guardar el código", ok: false });
       logger.error("save_config", "Error al guardar código de tótem");
@@ -58,7 +65,9 @@ export function ConfigScreen() {
               : res.message || res.status,
       );
       if (res.status === "ok") {
-        logger.info("manual_sync", "Sincronización exitosa", { message: res.message });
+        logger.info("manual_sync", "Sincronización exitosa", {
+          message: res.message,
+        });
       } else if (res.status === "no_internet") {
         logger.warn("manual_sync", "Sin conexión al servidor");
       } else {
@@ -75,8 +84,27 @@ export function ConfigScreen() {
     }
   };
 
+  const handleSaveWithPassword = () => {
+    if (!code.trim()) return;
+    setActive(false);
+    setShowPassword(true);
+    setPasswordValue("");
+    setPasswordError(false);
+  };
+
+  const handleConfirmPassword = () => {
+    if (passwordValue === ADMIN_PASSWORD) {
+      setShowPassword(false);
+      handleSave();
+    } else {
+      setPasswordError(true);
+      setPasswordValue("");
+    }
+  };
+
   const handleBack = () => {
     setActive(false);
+    setShowPassword(false);
     setScreen("splash");
   };
 
@@ -208,7 +236,7 @@ export function ConfigScreen() {
               <button
                 className="btn btn-accent btn-full"
                 style={{ fontSize: 24, minHeight: 80 }}
-                onClick={handleSave}
+                onClick={handleSaveWithPassword}
                 disabled={saving || !code.trim()}
               >
                 {saving ? "Guardando..." : "Guardar código"}
@@ -311,6 +339,42 @@ export function ConfigScreen() {
             </div>
           )}
 
+          {/* Card: Partidos */}
+          {!activeInput && (
+            <div
+              style={{
+                width: "100%",
+                background: "rgba(255,255,255,.1)",
+                backdropFilter: "blur(14px)",
+                WebkitBackdropFilter: "blur(14px)",
+                border: "1px solid rgba(255,255,255,.15)",
+                borderRadius: 20,
+                padding: "32px 36px",
+                marginBottom: 24,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 20,
+                  color: "rgba(255,255,255,.5)",
+                  textTransform: "uppercase",
+                  letterSpacing: ".1em",
+                  fontWeight: 700,
+                  marginBottom: 20,
+                }}
+              >
+                Partidos de la Fase
+              </div>
+              <button
+                className="btn btn-secondary btn-full"
+                style={{ fontSize: 24, minHeight: 80 }}
+                onClick={() => setScreen("matches")}
+              >
+                📋 Ver Partidos
+              </button>
+            </div>
+          )}
+
           {/* Card: Estado actual */}
           {!activeInput && info && (
             <div
@@ -384,6 +448,145 @@ export function ConfigScreen() {
         </div>
       </div>
 
+      {/* Password keyboard */}
+      {showPassword && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 30,
+            display: "flex",
+            flexDirection: "column",
+            background: "rgba(0,0,0,.85)",
+          }}
+        >
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "0 80px",
+            }}
+          >
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
+              <div
+                style={{
+                  fontSize: 20,
+                  color: "rgba(255,255,255,.5)",
+                  textTransform: "uppercase",
+                  letterSpacing: ".1em",
+                  fontWeight: 700,
+                  marginBottom: 8,
+                }}
+              >
+                Contraseña requerida
+              </div>
+              <div style={{ fontSize: 16, color: "rgba(255,255,255,.35)" }}>
+                Ingresa la contraseña de administrador para guardar el código
+              </div>
+            </div>
+            <input
+              readOnly
+              value={passwordValue ? "•".repeat(passwordValue.length) : ""}
+              placeholder="Contraseña"
+              onPointerDown={() => {}}
+              style={{
+                width: "100%",
+                maxWidth: 480,
+                minHeight: 80,
+                fontSize: 36,
+                textAlign: "center",
+                background: passwordError
+                  ? "rgba(220,38,38,.12)"
+                  : "rgba(255,255,255,.08)",
+                border: `2px solid ${passwordError ? "rgba(220,38,38,.5)" : "rgba(255,255,255,.15)"}`,
+                borderRadius: 16,
+                color: "#ffffff",
+                outline: "none",
+                letterSpacing: "1em",
+                fontFamily: "monospace",
+              }}
+            />
+            {passwordError && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "10px 20px",
+                  borderRadius: 10,
+                  fontSize: 18,
+                  background: "rgba(220,38,38,.12)",
+                  color: "#ff6b6b",
+                  border: "1px solid rgba(220,38,38,.3)",
+                }}
+              >
+                ✗ Contraseña incorrecta
+              </div>
+            )}
+          </div>
+          <div
+            style={{
+              flexShrink: 0,
+              background: "rgba(255,255,255,.18)",
+              backdropFilter: "blur(18px)",
+              WebkitBackdropFilter: "blur(18px)",
+              borderTop: "1px solid rgba(255,255,255,.12)",
+            }}
+          >
+            <div className="keyboard-bar">
+              <span
+                style={{
+                  fontSize: 20,
+                  color: "#ffffff",
+                  textTransform: "uppercase",
+                  letterSpacing: ".1em",
+                  fontWeight: 700,
+                }}
+              >
+                Contraseña de administrador
+              </span>
+              <div style={{ display: "flex", gap: 16 }}>
+                <button
+                  className="btn btn-ghost"
+                  style={{
+                    fontSize: 18,
+                    minHeight: 56,
+                    padding: "0 24px",
+                    borderRadius: 12,
+                  }}
+                  onClick={() => {
+                    setShowPassword(false);
+                    setPasswordError(false);
+                    setPasswordValue("");
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="btn btn-primary"
+                  style={{
+                    fontSize: 18,
+                    minHeight: 56,
+                    padding: "0 28px",
+                    borderRadius: 12,
+                  }}
+                  onClick={handleConfirmPassword}
+                >
+                  Confirmar →
+                </button>
+              </div>
+            </div>
+            <VirtualKeyboard
+              value={passwordValue}
+              onChange={setPasswordValue}
+              mode="alphanumeric"
+              onDone={handleConfirmPassword}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Keyboard */}
       {activeInput && (
         <div
@@ -430,10 +633,7 @@ export function ConfigScreen() {
                   padding: "0 28px",
                   borderRadius: 12,
                 }}
-                onClick={() => {
-                  setActive(false);
-                  handleSave();
-                }}
+                onClick={handleSaveWithPassword}
               >
                 Guardar →
               </button>
@@ -443,10 +643,7 @@ export function ConfigScreen() {
             value={code}
             onChange={setCode}
             mode="alphanumeric"
-            onDone={() => {
-              setActive(false);
-              handleSave();
-            }}
+            onDone={handleSaveWithPassword}
           />
         </div>
       )}

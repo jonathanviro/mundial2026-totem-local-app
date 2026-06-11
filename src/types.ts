@@ -27,6 +27,7 @@ export interface Match {
   goals_local?: number | null
   goals_visitor?: number | null
   finished: number
+  date?: string | null
 }
 
 export interface Team {
@@ -72,3 +73,4 @@ export type Screen =
   | 'confirm'     // Resumen antes de confirmar
   | 'success'     // Éxito - auto reset
   | 'logs'        // Visor de logs del sistema
+  | 'matches'     // Visor de partidos de la fase

@@ -6,6 +6,7 @@ import { PredictScreen }  from './screens/PredictScreen'
 import { ConfirmScreen }  from './screens/ConfirmScreen'
 import { SuccessScreen }  from './screens/SuccessScreen'
 import { LogsScreen }     from './screens/LogsScreen'
+import { MatchesScreen }  from './screens/MatchesScreen'
 import './index.css'
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
       {screen === 'confirm'  && <ConfirmScreen />}
       {screen === 'success'  && <SuccessScreen />}
       {screen === 'logs'     && <LogsScreen />}
+      {screen === 'matches'  && <MatchesScreen />}
     </div>
   )
 }
